@@ -1,17 +1,13 @@
 
 #define DHTTYPE DHT11 // DHT 11
 #define DHTPIN 33
-#ifdef ESP32
+
 #include <WiFi.h>
 #include <HTTPClient.h>
-#else
-#include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
-#include <WiFiClient.h>
-#endif
+
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
-#include <DHT.h>
+#include <Adafruit_BME280.h>
 
 const char *ssid = "EOLO-FRITZ!Box7430HS";
 const char *password = "44033832564642442904";
@@ -22,19 +18,19 @@ const char *serverName = "http://bonex27.byethost31.com/esp-post-data.php";
 // Keep this API Key value to be compatible with the PHP code provided in the project page.
 // If you change the apiKeyValue value, the PHP file /esp-post-data.php also needs to have the same key
 String apiKeyValue = "tPmAT5Ab3j7F9";
-String sensorName = "DHT11";
+String sensorName = "BMP280";
 String sensorLocation = "Bedroom";
 
-/*#include <SPI.h>
+#include <SPI.h>
 #define BME_SCK 18
 #define BME_MISO 19
 #define BME_MOSI 23
-#define BME_CS 5*/
+#define BME_CS 5
 
-DHT dht2 = DHT(DHTPIN, DHTTYPE);
+//Adafruit_BME280 bme;
 
 //Adafruit_BME280 bme(BME_CS);  // hardware SPI
-//Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK);  // software SPI
+Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK);  // software SPI
 
 // the following variables are unsigned longs because the time, measured in
 // milliseconds, will quickly become a bigger number than can be stored in an int.
@@ -42,27 +38,33 @@ unsigned long lastTime = 0;
 
 unsigned long timerDelay = 10000;
 
+
 void setup()
 {
   Serial.begin(115200);
-  pinMode(DHTPIN, INPUT);
 
-  dht2.begin();
-  Serial.println(F("DHTxx test!"));
+
   WiFi.begin(ssid, password);
-  M5.Lcd.setCursor(0, 20);
-  M5.Lcd.printf("Connection");
+
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
-    M5.Lcd.setCursor(100, 20);
-    M5.Lcd.printf("...");
+    Serial.print(".");
   }
   Serial.println("");
   Serial.print("Connected to WiFi network with IP Address: ");
   Serial.println(WiFi.localIP());
 
-  Serial.println("Timer set to 30 seconds (timerDelay variable), it will take 30 seconds before publishing the first reading.");
+  bool status = bme.begin(0x76);
+  
+  Serial.println(status);
+  if (!status)
+  {
+    Serial.println("Could not find a valid BME280 sensor, check wiring or change I2C address!");
+   
+  }
+  else
+    Serial.println("Connect to BME280");
 }
 
 void loop()
@@ -83,7 +85,7 @@ void loop()
 
       // Prepare your HTTP POST request data
 
-      String httpRequestData = "api_key=" + apiKeyValue + "&sensor=" + sensorName + "&location=" + sensorLocation + "&value1=" + String(dht2.readTemperature()) + "&value2=" + String(dht2.readHumidity()) + "&value3=" + String(0) + "";
+      String httpRequestData = "api_key=" + apiKeyValue + "&sensor=" + sensorName + "&location=" + sensorLocation + "&value1=" + String(bme.readTemperature()) + "&value2=" + String(bme.readHumidity()) + "&value3=" + String(bme.readPressure() / 100.0F) + "";
       Serial.print("httpRequestData: ");
       Serial.println(httpRequestData);
 
